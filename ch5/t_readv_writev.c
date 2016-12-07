@@ -23,10 +23,10 @@ my_readv(int fd, struct iovec *iov, int iovcnt) {
 	ssize_t tmpRead;
 	int i;
 	for (i = 0; i < iovcnt; i++) {
-		iov[i].iov_base = malloc(iov[i].iov_len);
 		tmpRead = read(fd, iov[i].iov_base, iov[i].iov_len);
 		if (tmpRead == -1) {
-			errExit("fewer bytes read than requested");
+			perror("read");
+			errExit("Exiting...");
 		} else if (tmpRead == 0) {
 			return 0;
 		}
@@ -43,7 +43,8 @@ my_writev(int fd, const struct iovec *iov, int iovcnt) {
 	for (i = 0; i < iovcnt; i++) {
 		tmpWritten = write(fd, iov[i].iov_base, iov[i].iov_len);
 		if (tmpWritten != iov[i].iov_len) {
-			errExit("fewer bytes written than requested");
+			perror("write");
+			errExit("Exiting...");
 		}
 		numWritten += tmpWritten;
 	}
@@ -61,9 +62,11 @@ main() {
 	int x = 4096;
 	long long y = 1000000;
 	// Place to store read values
-	char read_buf[14];
+	char *read_buf;
 	int read_x;
 	long long read_y;
+
+	read_buf = malloc(strlen(buf));
 
 	fd = open("test_readv_writev.data", O_RDWR | O_CREAT | O_TRUNC, S_IWUSR | S_IRUSR);
 	if (fd == -1) {
@@ -72,17 +75,23 @@ main() {
 
 	iov_w[0].iov_base = buf;
 	iov_w[0].iov_len = strlen(buf);
+
+	iov_r[0].iov_base = read_buf;
 	iov_r[0].iov_len = strlen(buf);
 	totRequired = iov_w[0].iov_len;
 
 	iov_w[1].iov_base = &x;
 	iov_w[1].iov_len = sizeof(x);
-	iov_r[1].iov_len = sizeof(x);
+
+	iov_r[1].iov_base = &read_x;
+	iov_r[1].iov_len = sizeof(read_x);
 	totRequired += iov_w[1].iov_len;
 
 	iov_w[2].iov_base = &y;
 	iov_w[2].iov_len = sizeof(y);
-	iov_r[2].iov_len = sizeof(y);
+
+	iov_r[2].iov_base = &read_y;
+	iov_r[2].iov_len = sizeof(read_y);
 	totRequired += iov_w[2].iov_len;
 
 	bytesWritten = my_writev(fd, iov_w, 3);
@@ -101,13 +110,13 @@ main() {
 	}
 	printf("Read %lld bytes\n", (long long)bytesRead);
 
-	if (strncmp((char*)iov_w[0].iov_base, (char*)iov_r[0].iov_base, iov_w[0].iov_len) != 0) {
+	if (strncmp((char*)iov_w[0].iov_base, read_buf, 14) != 0) {
 		errExit("String value read not equal to value written");
 	}
-	if (*(int*)iov_w[1].iov_base != *(int*)iov_r[1].iov_base) {
+	if (*(int*)iov_w[1].iov_base != read_x) {
 		errExit("Integer value read not equal to value written");
 	}
-	if (*(long long*)iov_w[2].iov_base != *(long long*)iov_r[2].iov_base) {
+	if (*(long long*)iov_w[2].iov_base != read_y) {
 		errExit("Long long value read not equal to value written");
 	}
 
