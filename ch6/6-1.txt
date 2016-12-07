@@ -1,0 +1,3 @@
+The compiled executable is much smaller than the 10MB mbuf array it contains
+because that array is uninitialized, so there is no need to store it in the
+executable.
